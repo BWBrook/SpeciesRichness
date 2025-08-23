@@ -15,11 +15,15 @@ fetch_ecoregister_zip <- function(version = "v20250703",
   dir.create(destdir, recursive = TRUE, showWarnings = FALSE)
   # Prefer fetching the gz data file directly via file_stream id
   gz_out <- file.path(destdir, sprintf("Ecological_Register_data_%s.txt.gz", version))
+  # Allow explicit local override via environment variable
+  env_path <- Sys.getenv("ECOREG_DATA_PATH", unset = "")
+  if (nzchar(env_path) && file.exists(env_path)) return(env_path)
+
   is_gz <- function(p) {
     if (!file.exists(p)) return(FALSE)
     con <- file(p, "rb"); on.exit(close(con), add = TRUE)
-    header <- tryCatch(readBin(con, "raw", n = 2L), error = function(e) raw(0))
-    length(header) == 2L && as.integer(header) [1:2] == c(0x1fL, 0x8bL)
+    sig <- tryCatch(readBin(con, "raw", n = 2L), error = function(e) raw(0))
+    length(sig) >= 2L && identical(as.integer(sig[1:2]), c(0x1fL, 0x8bL))
   }
   have_valid <- file.exists(gz_out) && isTRUE(file.info(gz_out)$size > 0) && is_gz(gz_out)
   if (!have_valid) {

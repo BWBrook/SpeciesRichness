@@ -24,3 +24,41 @@ inst/extdata/*.gz
 
 # build / checks
 .Rcheck/
+
+*.csv
+
+# renv
+renv/library/
+renv/staging/
+
+# output files
+outputs/
+
+/*.tar.gz
+/*.zip
+
+vignettes/*.html
+vignettes/*.pdf
+
+# Quarto / rmarkdown artefacts
+*.html
+*.knit.md
+/report_files
+*.tex
+*.log
+*.aux
+*.toc
+*.pdf
+
+# _targets
+/_targets/* 
+
+# Misc
+.DS_Store
+.vscode/
+.idea/
+*.html
+*.png
+*.js
+*.css
+*.woff
