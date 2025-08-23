@@ -1,0 +1,26 @@
+# R / RStudio
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.Rprofile.user
+.DS_Store
+
+# renv
+renv/library/
+renv/staging/
+
+# targets
+_targets/
+# optional frozen outputs from Quarto later
+.quarto/_freeze/
+
+# data
+data/
+data-raw/
+inst/extdata/*.zip
+inst/extdata/*.gz
+
+# build / checks
+.Rcheck/
+
