@@ -11,9 +11,15 @@
 read_ecoregister_counts <- function(zip_path,
                                     data_member = "Ecological_Register_data.txt.gz") {
   stopifnot(file.exists(zip_path))
-  exdir <- file.path(tempdir(), "ecoregister_unzip")
-  utils::unzip(zip_path, files = data_member, exdir = exdir, overwrite = TRUE)
-  gz <- file.path(exdir, data_member)
+  # Allow either a direct .gz path or a .zip containing the gz member
+  is_zip <- grepl("\\.zip$", zip_path, ignore.case = TRUE)
+  if (is_zip) {
+    exdir <- file.path(tempdir(), "ecoregister_unzip")
+    utils::unzip(zip_path, files = data_member, exdir = exdir, overwrite = TRUE)
+    gz <- file.path(exdir, data_member)
+  } else {
+    gz <- zip_path
+  }
   dt <- data.table::fread(gz, sep = "\t", quote = "", na.strings = c("", "NA"), showProgress = FALSE)
   # Column names in archive use spaces:
   req <- c("sample no","genus","species","subspecies","count","count 2")
