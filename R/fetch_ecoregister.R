@@ -27,11 +27,12 @@ fetch_ecoregister_zip <- function(version = "v20250703",
       sprintf("https://datadryad.org/downloads/file_stream/%s?download=1", as.integer(file_stream_id)),
       sprintf("https://datadryad.org/stash/downloads/file_stream/%s?download=1", as.integer(file_stream_id))
     )
+    ua <- httr::user_agent("SpeciesRichness/0.0.0.9000 (R httr)")
     for (u in candidates) {
       cli::cli_alert_info("Trying Dryad file_stream → {u}")
       ok <- isTRUE(tryCatch({ curl::curl_download(u, gz_out); TRUE }, error = function(e) FALSE)) && is_gz(gz_out)
       if (!ok) {
-        r <- tryCatch({ httr::RETRY("GET", u, httr::write_disk(gz_out, overwrite = TRUE), times = 3) }, error = identity)
+        r <- tryCatch({ httr::RETRY("GET", u, ua, httr::write_disk(gz_out, overwrite = TRUE), times = 3) }, error = identity)
         ok <- inherits(r, "response") && is_gz(gz_out)
       }
       if (ok) break
