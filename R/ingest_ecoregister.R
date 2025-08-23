@@ -27,15 +27,21 @@ read_ecoregister_counts <- function(zip_path,
   if (length(miss)) stop("Missing expected columns: ", paste(miss, collapse=", "))
   cnt <- data.table::fifelse(!is.na(dt[["count"]]) & dt[["count"]] > 0, dt[["count"]], dt[["count 2"]])
   cnt <- as.integer(round(cnt))
-  taxon <- trimws(paste(dt[["genus"]], dt[["species"]], dt[["subspecies"]]))
+  sp  <- dt[["species"]]
+  sub <- dt[["subspecies"]]
+  base <- ifelse(!is.na(sp) & nzchar(sp), paste(dt[["genus"]], sp), dt[["genus"]])
+  taxon <- trimws(ifelse(!is.na(sub) & nzchar(sub), paste(base, sub), base))
+  taxon[!nzchar(taxon)] <- NA_character_
   out <- data.table::data.table(
     sample_id = as.character(dt[["sample no"]]),
-    taxon = data.table::fifelse(nchar(taxon) == 0L, NA_character_, taxon),
+    taxon = taxon,
     count = cnt
   )
   out <- out[!is.na(count) & count > 0L]
-  data.table::setkey(out, sample_id)
-  out[]
+  # Aggregate duplicates within (sample_id, taxon)
+  x <- out[!is.na(taxon), .(count = sum(count)), by = .(sample_id, taxon)]
+  data.table::setkey(x, sample_id)
+  x[]
 }
 
 #' Summarise per-inventory richness and individuals

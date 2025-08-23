@@ -5,6 +5,8 @@
 ^scripts$
 ^_targets\.R$
 ^_targets$
+^inst/extdata/co_sample_flat\.csv$
+^data-raw/cache/?$
 ^Makefile$
 ^LICENSE\.md$
 ^renv$
