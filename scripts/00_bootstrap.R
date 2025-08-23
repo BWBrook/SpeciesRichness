@@ -1,12 +1,17 @@
 #!/usr/bin/env Rscript
 # Bootstraps a minimal toolchain for this project.
 
-message(">> Initialising renv (bare)...")
-if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
-renv::init(bare = TRUE)  # creates renv/ and renv.lock for current R
-
-# Ensure CRAN mirror is stable
+# Be explicit about CRAN mirror and renv cache for non-interactive runs
 options(repos = c(CRAN = "https://cloud.r-project.org"))
+Sys.setenv(RENV_CONFIG_USE_CACHE = "TRUE")
+
+message(">> Initialising renv (idempotent)...")
+if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
+if (!file.exists("renv/activate.R")) {
+  renv::init(bare = TRUE)  # creates renv/ and renv.lock for current R
+} else {
+  renv::activate()
+}
 
 # Core packages (install via renv so they’re pinned)
 pkgs <- c(
@@ -21,10 +26,16 @@ renv::install(pkgs)
 # Snapshot lockfile
 renv::snapshot(prompt = FALSE)
 
-# Minimal testing scaffold
+# Minimal testing scaffold (robust to non-package projects)
 if (!file.exists("tests/testthat.R")) {
-  usethis::use_testthat(edition = 3)
+  ok <- FALSE
+  if (requireNamespace("usethis", quietly = TRUE)) {
+    ok <- isTRUE(tryCatch({ usethis::use_testthat(edition = 3); TRUE }, error = function(e) FALSE))
+  }
+  if (!ok) {
+    dir.create("tests/testthat", recursive = TRUE, showWarnings = FALSE)
+    writeLines("# bootstrap placeholder for testthat\nif (requireNamespace(\"testthat\", quietly = TRUE)) {\n  testthat::test_that(\"bootstrap placeholder\", {\n    testthat::expect_true(TRUE)\n  })\n}", "tests/testthat.R")
+  }
 }
 
 message(">> Done. renv.lock created; packages installed.")
-
