@@ -15,16 +15,35 @@ fetch_ecoregister_zip <- function(version = "v20250703",
   dir.create(destdir, recursive = TRUE, showWarnings = FALSE)
   # Prefer fetching the gz data file directly via file_stream id
   gz_out <- file.path(destdir, sprintf("Ecological_Register_data_%s.txt.gz", version))
-  if (!file.exists(gz_out) || isTRUE(file.info(gz_out)$size == 0)) {
-    url_gz <- sprintf("https://datadryad.org/downloads/file_stream/%s", as.integer(file_stream_id))
-    cli::cli_alert_info("Downloading Ecological Register data (file_stream {file_stream_id}) to {gz_out}")
-    ok <- FALSE
-    ok <- ok || isTRUE(tryCatch({ curl::curl_download(url_gz, gz_out); file.exists(gz_out) && file.info(gz_out)$size > 0 }, error = function(e) FALSE))
-    if (!ok) {
-      r <- tryCatch({ httr::RETRY("GET", url_gz, httr::write_disk(gz_out, overwrite = TRUE), times = 3) }, error = identity)
-      ok <- inherits(r, "response") && file.exists(gz_out) && file.info(gz_out)$size > 0
+  is_gz <- function(p) {
+    if (!file.exists(p)) return(FALSE)
+    con <- file(p, "rb"); on.exit(close(con), add = TRUE)
+    header <- tryCatch(readBin(con, "raw", n = 2L), error = function(e) raw(0))
+    length(header) == 2L && as.integer(header) [1:2] == c(0x1fL, 0x8bL)
+  }
+  have_valid <- file.exists(gz_out) && isTRUE(file.info(gz_out)$size > 0) && is_gz(gz_out)
+  if (!have_valid) {
+    candidates <- c(
+      sprintf("https://datadryad.org/downloads/file_stream/%s?download=1", as.integer(file_stream_id)),
+      sprintf("https://datadryad.org/stash/downloads/file_stream/%s?download=1", as.integer(file_stream_id))
+    )
+    for (u in candidates) {
+      cli::cli_alert_info("Trying Dryad file_stream → {u}")
+      ok <- isTRUE(tryCatch({ curl::curl_download(u, gz_out); TRUE }, error = function(e) FALSE)) && is_gz(gz_out)
+      if (!ok) {
+        r <- tryCatch({ httr::RETRY("GET", u, httr::write_disk(gz_out, overwrite = TRUE), times = 3) }, error = identity)
+        ok <- inherits(r, "response") && is_gz(gz_out)
+      }
+      if (ok) break
     }
-    if (!ok) stop("Failed to download Ecological Register data.")
+    have_valid <- file.exists(gz_out) && is_gz(gz_out)
+  }
+  if (!have_valid) {
+    stop(
+      "Failed to download Ecological Register data (.gz). ",
+      "You can manually place the file under '", destdir, "' and re-run, ",
+      "or pass a working file_stream_id to fetch_ecoregister_zip()."
+    )
   }
   gz_out
 }
