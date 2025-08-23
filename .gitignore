@@ -18,9 +18,9 @@ _targets/
 # data
 data/
 data-raw/
+data-raw/cache/
 inst/extdata/*.zip
 inst/extdata/*.gz
 
 # build / checks
 .Rcheck/
-

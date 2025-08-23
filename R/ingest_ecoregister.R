@@ -1,0 +1,41 @@
+#' Read species-level counts from the Ecological Register ZIP
+#' Returns a data.table with columns: sample_id, taxon, count
+#' Uses 'count' if present, else 'count 2'; drops zeros/NA.
+read_ecoregister_counts <- function(zip_path,
+                                    data_member = "Ecological_Register_data.txt.gz") {
+  stopifnot(file.exists(zip_path))
+  exdir <- file.path(tempdir(), "ecoregister_unzip")
+  utils::unzip(zip_path, files = data_member, exdir = exdir, overwrite = TRUE)
+  gz <- file.path(exdir, data_member)
+  dt <- data.table::fread(gz, sep = "\t", quote = "", na.strings = c("", "NA"), showProgress = FALSE)
+  # Column names in archive use spaces:
+  req <- c("sample no","genus","species","subspecies","count","count 2")
+  miss <- setdiff(req, names(dt))
+  if (length(miss)) stop("Missing expected columns: ", paste(miss, collapse=", "))
+  cnt <- data.table::fifelse(!is.na(dt[["count"]]) & dt[["count"]] > 0, dt[["count"]], dt[["count 2"]])
+  cnt <- as.integer(round(cnt))
+  taxon <- trimws(paste(dt[["genus"]], dt[["species"]], dt[["subspecies"]]))
+  out <- data.table::data.table(
+    sample_id = as.character(dt[["sample no"]]),
+    taxon = data.table::fifelse(nchar(taxon) == 0L, NA_character_, taxon),
+    count = cnt
+  )
+  out <- out[!is.na(count) & count > 0L]
+  data.table::setkey(out, sample_id)
+  out[]
+}
+
+#' Summarise per-inventory richness and individuals
+summarise_per_inventory <- function(x) {
+  stopifnot(all(c("sample_id","count") %in% names(x)))
+  x[, .(S = data.table::uniqueN(taxon), N = sum(count)), by = sample_id][]
+}
+
+#' Build flat co/sample objects (as files) expected by the legacy harness
+#' Writes CSV with columns sample_id,count; returns file path.
+build_co_sample_flat <- function(x, out = "inst/extdata/co_sample_flat.csv") {
+  dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
+  data.table::fwrite(x[, .(sample_id, count)], out)
+  out
+}
+
