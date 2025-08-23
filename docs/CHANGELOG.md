@@ -66,3 +66,12 @@ Notes
 State after user run
 - `devtools::check()` passed (0 errors, 0 warnings, 0 notes after ignores).
 - `tar_make()` succeeded with 4 targets completed; artifacts verified.
+
+### Module 2 · Follow‑up tweaks
+Date: 2025-08-23
+
+- Cleaned taxon labels to avoid literal " NA" suffixes when species/subspecies are missing.
+- Aggregated duplicate rows within `(sample_id, taxon)` to stabilize S/N and downstream outputs.
+- Added targets: `distinct_count_classes` and `eligible_inventories` (>= 4 count classes).
+- Enabled optional fast caching (`tar_option_set(format = "qs")` when `qs` is installed).
+- Extended `.Rbuildignore` to ignore `_targets/`, `inst/extdata/co_sample_flat.csv`, and `data-raw/cache/`.
