@@ -1,28 +1,29 @@
+"# Generated docs + NAMESPACE via roxygen2" -> NULL
+
 #' Download the Ecological Register archive (Dryad)
-#' @param version character, Dryad version tag (e.g., "v20250703")
-#' @param destdir directory for cached downloads (untracked)
-#' @return path to the downloaded ZIP file
+#'
+#' @param version Character Dryad version tag (e.g., "v20250703").
+#' @param destdir Directory for cached downloads (untracked).
+#' @param doi DOI string for the dataset (used for provenance).
+#'
+#' @return Path to the downloaded ZIP file (character scalar).
+#' @export
 fetch_ecoregister_zip <- function(version = "v20250703",
                                   destdir = "data-raw/cache",
                                   doi = "10.5061/dryad.brv15dvdc") {
   dir.create(destdir, recursive = TRUE, showWarnings = FALSE)
-  url <- sprintf("https://datadryad.org/stash/downloads/file_stream/%%s", version)
-  # Stable fallback via DOI landing if the direct versioned stream changes later
   out <- file.path(destdir, sprintf("Ecological_Register_%s.zip", version))
   if (!file.exists(out)) {
     cli::cli_alert_info("Downloading Ecological Register {version} to {out}")
-    # Try direct version stream first; if it fails, fall back to DOI resolver
-    ok <- tryCatch({
-      curl::curl_download(sub("%s", "download?filename=doi_10_5061_dryad_brv15dvdc__" %+% version %+% ".zip", url), out); TRUE
-    }, error = function(e) FALSE)
+    fname <- sprintf("doi_10_5061_dryad_brv15dvdc__%s.zip", version)
+    url1 <- sprintf("https://datadryad.org/stash/downloads/download?filename=%s", utils::URLencode(fname, reserved = TRUE))
+    ok <- FALSE
+    ok <- ok || isTRUE(tryCatch({ curl::curl_download(url1, out); file.exists(out) && file.info(out)$size > 0 }, error = function(e) FALSE))
     if (!ok) {
-      httr::RETRY("GET",
-        sprintf("https://datadryad.org/stash/doi/%s", doi),
-        httr::write_disk(out, overwrite = TRUE), times = 3)
+      r <- tryCatch({ httr::RETRY("GET", url1, httr::write_disk(out, overwrite = TRUE), times = 3) }, error = identity)
+      ok <- inherits(r, "response") && file.exists(out) && file.info(out)$size > 0
     }
+    if (!ok) stop("Failed to download Ecological Register zip for version ", version)
   }
   out
 }
-
-`%+%` <- function(a, b) paste0(a, b)
-

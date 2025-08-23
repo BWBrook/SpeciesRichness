@@ -1,6 +1,13 @@
 #' Read species-level counts from the Ecological Register ZIP
-#' Returns a data.table with columns: sample_id, taxon, count
-#' Uses 'count' if present, else 'count 2'; drops zeros/NA.
+#'
+#' Returns a `data.table` with columns: `sample_id`, `taxon`, `count`.
+#' Uses `count` if present, else `count 2`; drops zeros/NA.
+#'
+#' @param zip_path Path to the ZIP file returned by [fetch_ecoregister_zip()].
+#' @param data_member Name of the gz member inside the ZIP to read.
+#'
+#' @return A data.table of long-form counts.
+#' @export
 read_ecoregister_counts <- function(zip_path,
                                     data_member = "Ecological_Register_data.txt.gz") {
   stopifnot(file.exists(zip_path))
@@ -26,16 +33,27 @@ read_ecoregister_counts <- function(zip_path,
 }
 
 #' Summarise per-inventory richness and individuals
+#'
+#' @param x A data.table as returned by [read_ecoregister_counts()].
+#'
+#' @return A data.table with columns `sample_id`, `S`, `N`.
+#' @export
 summarise_per_inventory <- function(x) {
   stopifnot(all(c("sample_id","count") %in% names(x)))
   x[, .(S = data.table::uniqueN(taxon), N = sum(count)), by = sample_id][]
 }
 
 #' Build flat co/sample objects (as files) expected by the legacy harness
-#' Writes CSV with columns sample_id,count; returns file path.
+#'
+#' Writes CSV with columns `sample_id,count`; returns file path.
+#'
+#' @param x Data.table with columns `sample_id`, `count`.
+#' @param out Output CSV path under `inst/extdata/`.
+#'
+#' @return The `out` path (invisibly).
+#' @export
 build_co_sample_flat <- function(x, out = "inst/extdata/co_sample_flat.csv") {
   dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
   data.table::fwrite(x[, .(sample_id, count)], out)
-  out
+  invisible(out)
 }
-
