@@ -1,5 +1,3 @@
-"# Generated docs + NAMESPACE via roxygen2" -> NULL
-
 #' Download the Ecological Register archive (Dryad)
 #'
 #' @param version Character Dryad version tag (e.g., "v20250703").

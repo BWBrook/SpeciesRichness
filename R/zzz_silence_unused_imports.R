@@ -6,6 +6,7 @@
 #' checks pass without altering runtime behavior.
 #'
 #' @keywords internal
+#' @noRd
 .silence_unused_imports <- function() {
   if (FALSE) {
     targets::tar_config_get
@@ -16,4 +17,3 @@
   }
   invisible(TRUE)
 }
-
