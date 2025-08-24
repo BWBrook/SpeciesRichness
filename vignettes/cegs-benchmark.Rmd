@@ -1,0 +1,52 @@
+---
+title: "CEGS Benchmark Walkthrough"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{CEGS Benchmark Walkthrough}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+This vignette demonstrates the CEGS-only benchmark added to the `{targets}` pipeline.
+
+## Prerequisites
+
+Run these in the RStudio Console to prepare the environment and docs:
+
+```r
+renv::restore(prompt = FALSE)
+devtools::document()
+devtools::test()
+```
+
+## Build the pipeline
+
+```r
+targets::tar_make()
+```
+
+Visualize the DAG:
+
+```r
+targets::tar_visnetwork()
+```
+
+## Inspect benchmark results
+
+The CEGS benchmark pairs similar inventories (by a scale-invariant top-10 fingerprint), fits CEGS-ML/LD to the focal inventory, and scores the neighbour tail.
+
+```r
+scores <- targets::tar_read(cegs_scores)
+head(scores)
+```
+
+Summary win rates (LD vs ML), including a 10x margin analysis:
+
+```r
+sumry <- targets::tar_read(cegs_summary)
+sumry$basic
+sumry$margin10
+```
+
+If you have not built the upstream ingest targets yet, run the full pipeline as above (`tar_make()`) before reading results.
+

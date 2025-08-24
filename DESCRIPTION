@@ -31,7 +31,10 @@ Suggests:
     qs,
     sads,
     poilog,
-    minpack.lm
+    minpack.lm,
+    knitr,
+    rmarkdown
 Config/testthat/edition: 3
+VignetteBuilder: knitr
 URL: https://github.com/your-org/SpeciesRichness
 BugReports: https://github.com/your-org/SpeciesRichness/issues

@@ -1,0 +1,16 @@
+citHeader("To cite the SpeciesRichness package in publications, please use:")
+
+year <- format(Sys.Date(), "%Y")
+
+citEntry(
+  entry = "Manual",
+  title = "SpeciesRichness: Species Richness Estimation Benchmarks (CEGS/PLN/Weibull)",
+  author = person(given = "Barry", family = "Brook"),
+  year = year,
+  note = "R package version 0.0.0.9000",
+  textVersion = paste0(
+    "Brook, B. (", year, "). SpeciesRichness: Species Richness Estimation ",
+    "Benchmarks (CEGS/PLN/Weibull). R package version 0.0.0.9000."
+  )
+)
+

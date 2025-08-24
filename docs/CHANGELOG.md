@@ -75,3 +75,32 @@ Date: 2025-08-23
 - Added targets: `distinct_count_classes` and `eligible_inventories` (>= 4 count classes).
 - Enabled optional fast caching (`tar_option_set(format = "qs")` when `qs` is installed).
 - Extended `.Rbuildignore` to ignore `_targets/`, `inst/extdata/co_sample_flat.csv`, and `data-raw/cache/`.
+
+### Added
+Date: 2025-08-24
+- Root `CHANGELOG.md` (Keep a Changelog style).
+- `docs/PIPELINE.md` with current DAG and usage notes.
+- `docs/AGENT_NOTES.md` session log for agent edits.
+- `docs/DEVELOPMENT.qmd` with local setup and workflows.
+- `scripts/bootstrap.R` to restore/install and document/test.
+- `metadata/data_manifest.csv` to track small example artefacts.
+- Minimal CI scaffold at `.github/workflows/check.yml` (manual dispatch only).
+- Vendor CEGS estimators: `cegs_ml()` and `cegs_ld()` with internal helpers.
+- Unit tests for parity with `Alroy/` originals.
+- Benchmark utilities: `topk_fingerprint()`, `nearest_neighbour()`, `tail_histogram()`, `tail_nll()`.
+- Targets: `eligible_ids`, `topk_matrix`, `nearest_pair`, `cegs_scores`, and `cegs_summary`.
+- `inst/CITATION` (moves citation metadata into standard location for R CMD check).
+- `vignettes/cegs-benchmark.Rmd` vignette showing end-to-end benchmark usage.
+
+### Changed
+- `_targets.R`: removed `library()` and `tar_source()`, added `import::from()`/`import::here()`, and set deterministic `tar_option_set(seed = 1L)`.
+- `_targets.R`: replaced `data.table:::.()` alias with `list()` to avoid hidden imports.
+- R ingest helpers: switched `stopifnot()`/`stop()` to `rlang::abort()`; default output path now via `here::here()`.
+- `.Rbuildignore` and `.gitignore` updated to include `.lintr`, `.quarto/`, and `docs/_site/`.
+- `DESCRIPTION`: added `stats4` to Imports.
+- `.Rbuildignore`: now ignores top-level `CITATION.cff` to silence non-standard CITATION NOTE.
+- `DESCRIPTION`: added `knitr`/`rmarkdown` to Suggests and `VignetteBuilder: knitr` for vignettes.
+
+### Fixed
+- Improved pipeline portability by avoiding implicit package attachment and by using explicit imports.
+- 

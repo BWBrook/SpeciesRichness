@@ -33,7 +33,7 @@ fetch_ecoregister_zip <- function(version = "v20250703",
     )
     ua <- httr::user_agent("SpeciesRichness/0.0.0.9000 (R httr)")
     for (u in candidates) {
-      cli::cli_alert_info("Trying Dryad file_stream → {u}")
+      cli::cli_alert_info("Trying Dryad file_stream -> {u}")
       ok <- isTRUE(tryCatch({ curl::curl_download(u, gz_out); TRUE }, error = function(e) FALSE)) && is_gz(gz_out)
       if (!ok) {
         r <- tryCatch({ httr::RETRY("GET", u, ua, httr::write_disk(gz_out, overwrite = TRUE), times = 3) }, error = identity)

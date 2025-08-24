@@ -17,3 +17,4 @@
 ^\.Rproj\.user$
 ^\.lintr$
 ^\.quarto/
+^CITATION\.cff$

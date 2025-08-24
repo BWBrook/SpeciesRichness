@@ -1,17 +1,19 @@
-"#' CEGS estimators" 
-#' ML and likelihood-density grid estimators for the CEGS model.
+#' CEGS Estimators (ML and LD)
+#'
+#' Maximum likelihood (ML) and likelihood-density (LD) estimators for the CEGS model.
 #'
 #' @param n Integer vector of species counts.
 #' @return A list with fields `richness`, `scale`, `shape`, `AICc`, `fitted_RAD`, `fitted_SAD`.
+#' @name cegs
+NULL
+
+#' @rdname cegs
 #' @export
 cegs_ml <- function(n) {
   n <- as.integer(n)
   if (length(unique(n)) < 3L) {
     return(list(richness = NA_real_, scale = NA_real_, shape = NA_real_, AICc = NA_real_, fitted_RAD = NA, fitted_SAD = NA))
   }
-
-  import::from("stats4", mle)
-
   pd <- .prep_data(n)
   like <- function(l, g) .neg_loglik(l = l, g = exp(g), s = pd$s, u = pd$u, adjust = 1e-8)
 
@@ -23,7 +25,7 @@ cegs_ml <- function(n) {
   if (inherits(cf, "try-error")) {
     return(list(richness = NA_real_, scale = NA_real_, shape = NA_real_, AICc = NA_real_, fitted_RAD = NA, fitted_SAD = NA))
   }
-  co <- coef(cf)
+  co <- stats4::coef(cf)
   l <- unname(co[["l"]]); g_log <- unname(co[["g"]])
   if (is.na(l) || is.na(g_log) || l %in% c(0, 1e8) || g_log %in% c(-10, 10)) {
     return(list(richness = NA_real_, scale = NA_real_, shape = NA_real_, AICc = NA_real_, fitted_RAD = NA, fitted_SAD = NA))
@@ -46,6 +48,7 @@ cegs_ml <- function(n) {
   )
 }
 
+#' @rdname cegs
 #' @export
 cegs_ld <- function(n) {
   n <- as.integer(n)

@@ -7,7 +7,7 @@ topk_fingerprint <- function(counts, k = 10L) {
   S <- length(counts); N <- sum(counts)
   if (S == 0L || N == 0L) return(rep(NA_real_, k))
   v <- sort(counts, decreasing = TRUE)
-  v <- head(v, k)
+  v <- utils::head(v, k)
   v * (S / N)
 }
 
@@ -15,7 +15,6 @@ topk_fingerprint <- function(counts, k = 10L) {
 #' @keywords internal
 nearest_neighbour <- function(M) {
   # M: matrix rows = inventories, cols = k; rownames = sample_id
-  import::from("stats", dist)
   ok <- rowSums(is.na(M)) == 0
   ids <- rownames(M)[ok]
   nn <- stats::setNames(rep(NA_character_, length(ids)), ids)
@@ -45,4 +44,3 @@ tail_nll <- function(s, u, p) {
   if (!length(u)) return(NA_real_)
   -sum(s[u] * log(p[u]))
 }
-
