@@ -10,7 +10,13 @@
 #' @export
 read_ecoregister_counts <- function(zip_path,
                                     data_member = "Ecological_Register_data.txt.gz") {
-  stopifnot(file.exists(zip_path))
+  if (!file.exists(zip_path)) {
+    rlang::abort(
+      message = "Input archive not found.",
+      class = "speciesrichness_file_missing",
+      zip_path = zip_path
+    )
+  }
   # Allow either a direct .gz path or a .zip containing the gz member
   is_zip <- grepl("\\.zip$", zip_path, ignore.case = TRUE)
   if (is_zip) {
@@ -24,7 +30,13 @@ read_ecoregister_counts <- function(zip_path,
   # Column names in archive use spaces:
   req <- c("sample no","genus","species","subspecies","count","count 2")
   miss <- setdiff(req, names(dt))
-  if (length(miss)) stop("Missing expected columns: ", paste(miss, collapse=", "))
+  if (length(miss)) {
+    rlang::abort(
+      message = paste0("Missing expected columns: ", paste(miss, collapse = ", ")),
+      class = "speciesrichness_bad_schema",
+      missing = miss
+    )
+  }
   cnt <- data.table::fifelse(!is.na(dt[["count"]]) & dt[["count"]] > 0, dt[["count"]], dt[["count 2"]])
   cnt <- as.integer(round(cnt))
   sp  <- dt[["species"]]
@@ -51,7 +63,14 @@ read_ecoregister_counts <- function(zip_path,
 #' @return A data.table with columns `sample_id`, `S`, `N`.
 #' @export
 summarise_per_inventory <- function(x) {
-  stopifnot(all(c("sample_id","count") %in% names(x)))
+  need <- c("sample_id", "count")
+  if (!all(need %in% names(x))) {
+    rlang::abort(
+      message = paste0("Input missing columns: ", paste(setdiff(need, names(x)), collapse = ", ")),
+      class = "speciesrichness_missing_columns",
+      missing = setdiff(need, names(x))
+    )
+  }
   x[, .(S = data.table::uniqueN(taxon), N = sum(count)), by = sample_id][]
 }
 
@@ -64,7 +83,10 @@ summarise_per_inventory <- function(x) {
 #'
 #' @return The `out` path (invisibly).
 #' @export
-build_co_sample_flat <- function(x, out = "inst/extdata/co_sample_flat.csv") {
+build_co_sample_flat <- function(x, out = NULL) {
+  if (is.null(out)) {
+    out <- here::here("inst", "extdata", "co_sample_flat.csv")
+  }
   dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
   data.table::fwrite(x[, .(sample_id, count)], out)
   invisible(out)

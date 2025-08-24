@@ -9,6 +9,7 @@ Language: en-GB
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Imports:
+    import,
     data.table,
     readr,
     curl,
@@ -16,6 +17,9 @@ Imports:
     jsonlite,
     cli,
     glue,
+    rlang,
+    here,
+    stats4,
     targets,
     tarchetypes,
     utils

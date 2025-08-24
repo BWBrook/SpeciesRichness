@@ -15,3 +15,5 @@
 
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.lintr$
+^\.quarto/

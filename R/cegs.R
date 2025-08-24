@@ -1,167 +1,147 @@
-# R/cegs.R
-#' @title CEGS estimators
-#' @description ML and likelihood-density grid estimators for the CEGS model.
+"#' CEGS estimators" 
+#' ML and likelihood-density grid estimators for the CEGS model.
+#'
+#' @param n Integer vector of species counts.
+#' @return A list with fields `richness`, `scale`, `shape`, `AICc`, `fitted_RAD`, `fitted_SAD`.
 #' @export
 cegs_ml <- function(n) {
-      data <- prep_data(n)
-  if (length(data$u) < 3 || max(n) < 3) {
-    return(map(
-      list(richness = NA, scale = NA, shape = NA, AICc = NA,
-           fitted_RAD = NA, fitted_SAD = NA),
-      ~ .x
-    ))
+  n <- as.integer(n)
+  if (length(unique(n)) < 3L) {
+    return(list(richness = NA_real_, scale = NA_real_, shape = NA_real_, AICc = NA_real_, fitted_RAD = NA, fitted_SAD = NA))
   }
-  
-  # Define likelihood for stats4::mle
-  like_fn <- function(l, g) neg_loglik(c(l, g), data$s, data$u)
-  
-  # Attempt optimization from two different starts
-  fit1 <- try(
-    mle(like_fn,
-        start = list(l = 1, g = 2),
-        lower = c(l = 0, g = -1),
-        upper = c(l = 1e8, g = 10),
-        method = "L-BFGS-B"),
-    silent = TRUE
-  )
-  fit2 <- try(
-    mle(like_fn,
-        start = list(l = 1, g = -2),
-        lower = c(l = 0, g = -10),
-        upper = c(l = 1e8, g = 1),
-        method = "L-BFGS-B"),
-    silent = TRUE
-  )
-  
-  # Choose best-fitting model
-  fits <- compact(list(fit1, fit2))
-  if (length(fits) == 0) {
-    return(map(
-      list(richness = NA, scale = NA, shape = NA, AICc = NA,
-           fitted_RAD = NA, fitted_SAD = NA),
-      ~ .x
-    ))
+
+  import::from("stats4", mle)
+
+  pd <- .prep_data(n)
+  like <- function(l, g) .neg_loglik(l = l, g = exp(g), s = pd$s, u = pd$u, adjust = 1e-8)
+
+  cf <- try(stats4::mle(like,
+                        lower = list(l = 0, g = -10),
+                        upper = list(l = 1e8, g = 10),
+                        start = list(l = 1, g = 2)),
+            silent = TRUE)
+  if (inherits(cf, "try-error")) {
+    return(list(richness = NA_real_, scale = NA_real_, shape = NA_real_, AICc = NA_real_, fitted_RAD = NA, fitted_SAD = NA))
   }
-  best_fit <- fits[[which.min(map_dbl(fits, ~ neg_loglik(coef(.x), data$s, data$u)))]]
-  cf <- coef(best_fit)
-  l <- cf["l"]
-  g <- cf["g"]
-  
-  # Check for boundary solutions
-  if (l %in% c(0, 1e8) || g %in% c(-10, 10)) {
-    return(map(
-      list(richness = NA, scale = NA, shape = NA, AICc = NA,
-           fitted_RAD = NA, fitted_SAD = NA),
-      ~ .x
-    ))
+  co <- coef(cf)
+  l <- unname(co[["l"]]); g_log <- unname(co[["g"]])
+  if (is.na(l) || is.na(g_log) || l %in% c(0, 1e8) || g_log %in% c(-10, 10)) {
+    return(list(richness = NA_real_, scale = NA_real_, shape = NA_real_, AICc = NA_real_, fitted_RAD = NA, fitted_SAD = NA))
   }
-  
-  # AICc calculation
-  aic_val <- 2 * neg_loglik(c(l, g), data$s, data$u)
-  AICc_val <- aic_val + 4 + 12 / (data$S2 - 3)
-  
-  # Compute predicted probabilities across full range
-  max_n <- 2^14
-  p_full <- map_dbl(
-    1:max_n,
-    ~ integrate(px_fun, i = .x, l = l, g = g,
-                lower = 1e-20, upper = 1 - 1e-20, stop.on.error = FALSE)$value
-  )
-  p0 <- integrate(p0_fun,
-                  l = l, g = g,
-                  lower = 1e-20, upper = 1 - 1e-20, stop.on.error = FALSE)$value
-  p_full <- p_full / (1 - p0)
-  
-  richness_est <- data$S / (1 - p0)
-  
+  aicc <- 2 * like(l, g_log) + 4 + 12 / (pd$S - 3)
+  g <- exp(g_log)
+
+  mx <- max(2^12, 2^ceiling(log2(max(n))))
+  p <- vapply(seq_len(mx), function(i) stats::integrate(.px_fun, l = l, g = g, i = i, adjust = 1e-8, lower = 1e-20, upper = 1 - 1e-20, stop.on.error = FALSE)$value, numeric(1))
+  p0 <- stats::integrate(.p0_fun, l = l, g = g, lower = 1e-20, upper = 1 - 1e-20, stop.on.error = FALSE)$value
+  p <- p / (1 - p0)
+
   list(
-    richness   = as.numeric(richness_est),
-    scale       = as.numeric(l),
-    shape       = as.numeric(g),
-    AICc        = AICc_val,
-    fitted_RAD  = sadrad(length(n), p_full),
-    fitted_SAD  = p_full[1:(2^12)]
+    richness   = as.numeric(pd$S / (1 - p0)),
+    scale      = as.numeric(l),
+    shape      = as.numeric(g),
+    AICc       = as.numeric(aicc),
+    fitted_RAD = .sadrad(length(n), p),
+    fitted_SAD = p[1:(2^12)]
   )
 }
 
 #' @export
-cegs_ld <- function(n, penalty = TRUE) { 
-  data <- prep_data(n)
-  if (length(data$u) < 3 || max(n) < 3) {
-    return(map(
-      list(richness = NA, scale = NA, shape = NA, AICc = NA,
-           fitted_RAD = NA, fitted_SAD = NA),
-      ~ .x
-    ))
+cegs_ld <- function(n) {
+  n <- as.integer(n)
+  if (length(unique(n)) < 3L) {
+    return(list(richness = NA_real_, scale = NA_real_, shape = NA_real_, AICc = NA_real_, fitted_RAD = NA, fitted_SAD = NA))
   }
-  
-  # Create raw parameter grid
-  seq_raw <- (1:51) / 10 - 2.6
-  # L_raw: each column is seq_raw; G_raw: each row is seq_raw
-  L_raw <- matrix(seq_raw, nrow = 51, ncol = 51)
-  G_raw <- matrix(seq_raw, nrow = 51, ncol = 51, byrow = TRUE)
-  # Direct vectorized transforms into parameter space
-  L_grid <- ifelse(L_raw > 0, exp(L_raw^2), exp(-L_raw^2))
-  G_grid <- ifelse(G_raw > 0,   G_raw^2,     -G_raw^2)
-  # Evaluate negative log-likelihood on grid
-  ll_mat <- matrix(Inf, nrow = 53, ncol = 53)
-  for (i in seq_len(51)) {
-    for (j in seq_len(51)) {
-      ll_mat[i+1, j+1] <- neg_loglik(c(L_grid[i,j], G_grid[i,j]), data$s, data$u)
+  pd <- .prep_data(n)
+  like <- function(l, g) .neg_loglik(l = l, g = g, s = pd$s, u = pd$u, adjust = 1e-4)
+
+  ml <- matrix(52 / (1:51) - 1, 51, 51)
+  mg <- t(ml)
+  ml <- ml / exp(mean(log(n)))
+  ll <- matrix(Inf, 53, 53)
+  for (i in 1:51) {
+    for (j in 1:51) {
+      ll[i + 1, j + 1] <- like(ml[i, j], mg[i, j])
     }
   }
-  
-  # Convert to likelihood density
-  ell <- exp(-ll_mat + min(ll_mat) + 5)
-  
-  # Compute gradient-based weights
-  dr <- abs(ell[2:52,2:52] - ell[2:52,1:51]) + abs(ell[2:52,2:52] - ell[2:52,3:53])
-  dc <- abs(ell[2:52,2:52] - ell[1:51,2:52]) + abs(ell[2:52,2:52] - ell[3:53,2:52])
-  weights <- dr * dc
-  weights <- weights / sum(weights)
-  
-  # Penalty towards reasonable parameter regions
-  log_L <- log(L_grid)
-  if (penalty) {
-    penalty_mat <- exp(-abs(log_L)) * exp(-abs(abs(G_grid) - 1))
-    weights <- (weights * penalty_mat) / sum(weights * penalty_mat)
-  }
-  
-  # Weighted parameter estimates
-  l_est <- exp(sum(weights * log_L))
-  g_est <- sum(weights * G_grid)
-  
-  # AICc for estimated parameters
-  aic_val <- 2 * neg_loglik(c(l_est, g_est), data$s, data$u)
-  AICc_val <- aic_val + 4 + 12 / (data$S2 - 3)
-  
-  # Predicted probabilities
-  max_n <- 2^14
-  p_full <- map_dbl(
-    1:max_n,
-    ~ integrate(px_fun, i = .x, l = l_est, g = g_est,
-                lower = 1e-20, upper = 1 - 1e-20, stop.on.error = FALSE)$value
-  )
-  p0 <- integrate(p0_fun,
-                  l = l_est, g = g_est,
-                  lower = 1e-20, upper = 1 - 1e-20, stop.on.error = FALSE)$value
-  p_full <- p_full / (1 - p0)
-  
-  richness_est <- data$S / (1 - p0)
-  
+  ell <- exp(-ll + min(ll, na.rm = TRUE) + 5)
+  dr <- abs(ell[2:52, 2:52] - ell[2:52, 1:51]) + abs(ell[2:52, 2:52] - ell[2:52, 3:53])
+  dc <- abs(ell[2:52, 2:52] - ell[1:51, 2:52]) + abs(ell[2:52, 2:52] - ell[3:53, 2:52])
+  d <- dr * dc
+  d <- d / sum(d)
+  ml2 <- 1 / (ml + 1)
+  mg2 <- 1 / (mg + 1)
+  l <- sum(d * ml2)
+  g <- sum(d * mg2)
+  l <- 1 / l - 1
+  g <- 1 / g - 1
+
+  aicc <- 2 * like(l, g) + 4 + 12 / (pd$S - 3)
+  mx <- max(2^12, 2^ceiling(log2(max(n))))
+  p <- vapply(seq_len(mx), function(i) stats::integrate(.px_fun, l = l, g = g, i = i, adjust = 1e-4, lower = 1e-20, upper = 1 - 1e-20, stop.on.error = FALSE)$value, numeric(1))
+  p0 <- stats::integrate(.p0_fun, l = l, g = g, lower = 1e-20, upper = 1 - 1e-20, stop.on.error = FALSE)$value
+  p <- p / (1 - p0)
+
   list(
-    richness   = as.numeric(richness_est),
-    scale       = as.numeric(l_est),
-    shape       = as.numeric(g_est),
-    AICc        = AICc_val,
-    fitted_RAD  = sadrad(length(n), p_full),
-    fitted_SAD  = p_full[1:(2^12)]
+    richness   = as.numeric(pd$S / (1 - p0)),
+    scale      = as.numeric(l),
+    shape      = as.numeric(g),
+    AICc       = as.numeric(aicc),
+    fitted_RAD = .sadrad(length(n), p),
+    fitted_SAD = p[1:(2^12)]
   )
 }
 
 # --- helpers (internal; not exported) ---
-sadrad    <- function(S, p) { ... }            # unchanged
-px_fun    <- function(i, l, g, U) { ... }
-p0_fun    <- function(U, l, g) { ... }
-prep_data <- function(n, max_n = 2^14) { ... }
-neg_loglik<- function(params, s, u) { ... }
+
+.sadrad <- function(S, p) {
+  p <- p / sum(p)
+  r <- numeric(S)
+  q <- (1:S) / (S + 1)
+  cs <- cumsum(p)
+  w <- 1L
+  for (i in 1:S) {
+    for (j in w:length(p)) {
+      if (cs[j] > q[i]) break
+    }
+    w <- j
+    if (w == 1L) r[i] <- 1 else r[i] <- w
+  }
+  r
+}
+
+.px_fun <- function(U, l, g, i, adjust = 1e-8) {
+  p <- 1 / (((-log(U))^g) / l + 1)
+  p[p == 0] <- adjust
+  stats::dgeom(i, p)
+}
+
+.p0_fun <- function(U, l, g) {
+  1 / (((-log(U))^g) / l + 1)
+}
+
+.prep_data <- function(n) {
+  S <- length(n)
+  s <- rep.int(0L, max(n))
+  t <- table(n)
+  s[as.integer(names(t))] <- as.integer(t)
+  u <- which(s > 0L)
+  list(S = S, s = s, u = u)
+}
+
+.neg_loglik <- function(l, g, s, u, adjust = 1e-8) {
+  p <- vapply(seq_along(u), function(idx) {
+    i <- u[[idx]]
+    stats::integrate(function(U) {
+      pp <- 1 / (((-log(U))^g) / l + 1)
+      pp[pp == 0] <- adjust
+      stats::dgeom(i, pp)
+    }, lower = 1e-20, upper = 1 - 1e-20, stop.on.error = FALSE)$value
+  }, numeric(1))
+  if (is.nan(p[1]) || min(p) == 0) return(1e10)
+  p0 <- stats::integrate(.p0_fun, l = l, g = g, lower = 1e-20, upper = 1 - 1e-20, stop.on.error = FALSE)$value
+  p <- p / (1 - p0)
+  ll <- -sum(s[u] * log(p))
+  if (!is.finite(ll) || is.nan(ll)) return(1e10)
+  ll
+}

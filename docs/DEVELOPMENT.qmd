@@ -1,0 +1,36 @@
+---
+title: "Development Notes"
+format: html
+---
+
+This document captures local setup and common workflows.
+
+## Setup
+
+Run these in the RStudio Console to set up the environment and docs:
+
+```r
+renv::restore(prompt = FALSE)
+pak::pak()                 # optional speed-up
+devtools::document()
+devtools::test()
+```
+
+Render documentation locally (optional):
+
+```bash
+quarto render docs/
+```
+
+## Pipeline
+
+```r
+targets::tar_make()
+targets::tar_visnetwork()
+```
+
+## Notes
+
+- No `library()` calls; use `import::from()` or fully qualified calls.
+- Deterministic runs via `tar_option_set(seed = 1L)`.
+

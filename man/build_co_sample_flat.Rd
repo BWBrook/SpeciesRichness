@@ -4,7 +4,7 @@
 \alias{build_co_sample_flat}
 \title{Build flat co/sample objects (as files) expected by the legacy harness}
 \usage{
-build_co_sample_flat(x, out = "inst/extdata/co_sample_flat.csv")
+build_co_sample_flat(x, out = NULL)
 }
 \arguments{
 \item{x}{Data.table with columns \code{sample_id}, \code{count}.}

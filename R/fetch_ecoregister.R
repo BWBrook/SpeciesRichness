@@ -44,10 +44,15 @@ fetch_ecoregister_zip <- function(version = "v20250703",
     have_valid <- file.exists(gz_out) && is_gz(gz_out)
   }
   if (!have_valid) {
-    stop(
-      "Failed to download Ecological Register data (.gz). ",
-      "You can manually place the file under '", destdir, "' and re-run, ",
-      "or pass a working file_stream_id to fetch_ecoregister_zip()."
+    rlang::abort(
+      message = paste0(
+        "Failed to obtain Ecological Register data (.gz). ",
+        "Place a valid file under '", destdir, "' and re-run, or pass a working ",
+        "file_stream_id to fetch_ecoregister_zip()."
+      ),
+      class = "speciesrichness_fetch_failed",
+      destdir = destdir,
+      file_stream_id = file_stream_id
     )
   }
   gz_out

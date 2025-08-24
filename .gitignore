@@ -14,6 +14,8 @@ renv/staging/
 _targets/
 # optional frozen outputs from Quarto later
 .quarto/_freeze/
+.quarto/
+docs/_site/
 
 # data
 data/
