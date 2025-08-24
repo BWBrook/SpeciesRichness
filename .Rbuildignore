@@ -11,6 +11,7 @@
 ^LICENSE\.md$
 ^renv$
 ^\.Rprofile$
+^Alroy/$
 
 ^.*\.Rproj$
 ^\.Rproj\.user$

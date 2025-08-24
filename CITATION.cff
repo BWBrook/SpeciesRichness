@@ -1,0 +1,7 @@
+cff-version: 1.2.0
+title: "Species Richness"
+authors:
+  - family-names: Brook
+    given-names: Barry
+message: "If you use this package, please cite as below."
+version: 0.0.0.9000

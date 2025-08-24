@@ -49,6 +49,7 @@ vignettes/*.pdf
 *.aux
 *.toc
 *.pdf
+a*.md
 
 # _targets
 /_targets/* 
@@ -62,3 +63,4 @@ vignettes/*.pdf
 *.js
 *.css
 *.woff
+/Alroy/
