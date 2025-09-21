@@ -32,6 +32,7 @@ inst/extdata/*.gz
 # renv
 renv/library/
 renv/staging/
+renv/sandbox/
 
 # output files
 outputs/
