@@ -5,3 +5,10 @@ Sys.setenv(RENV_CONFIG_PAK_ENABLED = "TRUE")
 if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
 # Activate renv if present (no-op before init)
 if (file.exists("renv/activate.R")) source("renv/activate.R")
+
+# Normalise library paths to absolute to avoid relative .Library issues when
+# tests run from subdirectories (e.g., testthat working dirs).
+try({
+  .libPaths(normalizePath(.libPaths(), winslash = "/", mustWork = FALSE))
+  assign(".Library", normalizePath(.Library, winslash = "/", mustWork = FALSE), envir = baseenv())
+}, silent = TRUE)

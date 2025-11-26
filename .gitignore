@@ -27,8 +27,6 @@ inst/extdata/*.gz
 # build / checks
 .Rcheck/
 
-*.csv
-
 # renv
 renv/library/
 renv/staging/

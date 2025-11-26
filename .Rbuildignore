@@ -12,6 +12,7 @@
 ^renv$
 ^\.Rprofile$
 ^Alroy/$
+^metadata/
 
 ^.*\.Rproj$
 ^\.Rproj\.user$
