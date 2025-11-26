@@ -49,7 +49,8 @@ read_ecoregister_counts <- function(zip_path,
     taxon = taxon,
     count = cnt
   )
-  out <- out[!is.na(out$count) & out$count > 0L]
+  out <- as.data.frame(out)
+  out <- out[!is.na(out$count) & out$count > 0L, , drop = FALSE]
 
   # Aggregate duplicates within (sample_id, taxon) using base aggregate to
   # avoid data.table NSE issues on non-attached namespaces.

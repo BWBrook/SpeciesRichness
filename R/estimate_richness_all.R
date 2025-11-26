@@ -52,8 +52,8 @@ estimate_richness_all <- function(counts) {
   if (requireNamespace("vegan", quietly = TRUE)) {
     est <- try(vegan::estimateR(counts), silent = TRUE)
     if (!inherits(est, "try-error")) {
-      if ("S.chao1" %in% names(est)) out$S_chao1_bc <- as.numeric(est[["S.chao1"]])
-      if ("S.ACE"   %in% names(est)) out$S_ace       <- as.numeric(est[["S.ACE"]])
+      if ("S.chao1" %in% rownames(est)) out$S_chao1_bc <- as.numeric(est["S.chao1", 1])
+      if ("S.ACE"   %in% rownames(est)) out$S_ace       <- as.numeric(est["S.ACE", 1])
     }
   }
 
@@ -74,17 +74,15 @@ estimate_richness_all <- function(counts) {
         out$S_logseries <- alpha * log(1 + n / alpha)
       }
     }
-  }
-
-  # Poisson-lognormal richness (zero-truncation adjustment)
-  if (requireNamespace("poilog", quietly = TRUE)) {
-    fit_pl <- try(poilog::poilogMLE(counts), silent = TRUE)
-    if (!inherits(fit_pl, "try-error") && all(c("mu", "sig") %in% names(fit_pl$par))) {
-      mu  <- fit_pl$par[["mu"]]
-      sig <- fit_pl$par[["sig"]]
-      p0 <- try(poilog::ppoilog(0, mu = mu, sig = sig, lower.tail = TRUE), silent = TRUE)
-      if (!inherits(p0, "try-error") && is.finite(p0) && p0 < 1) {
-        out$S_poilog <- S_obs / (1 - p0)
+    fit_pl <- try(sads::fitsad(counts, "poilog"), silent = TRUE)
+    if (!inherits(fit_pl, "try-error")) {
+      pars <- try(coef(fit_pl), silent = TRUE)
+      if (!inherits(pars, "try-error") && all(c("mu","sig") %in% names(pars))) {
+        mu <- pars[["mu"]]; sig <- pars[["sig"]]
+        p0 <- try(poilog::ppoilog(0, mu = mu, sig = sig, lower.tail = TRUE), silent = TRUE)
+        if (!inherits(p0, "try-error") && is.finite(p0) && p0 < 1) {
+          out$S_poilog <- S_obs / (1 - p0)
+        }
       }
     }
   }
@@ -99,19 +97,30 @@ estimate_richness_all <- function(counts) {
     out$S_cegs_ld <- fit_ld$richness
   }
 
-  # SpadeR / SPECIES: generalized-Poisson variants (best-effort)
+  # SpadeR / SPECIES: Chao1/ACE/iChao1/GP-MLE if available
   if (requireNamespace("SpadeR", quietly = TRUE)) {
     gp <- try(SpadeR::ChaoSpecies(counts, datatype = "abundance"), silent = TRUE)
-    if (!inherits(gp, "try-error")) {
-      # ChaoSpecies returns a data.frame of estimates; use available columns if present
-      if ("Species.richness" %in% names(gp)) {
-        out$S_chiu_gp <- as.numeric(gp[["Species.richness"]])
-      } else if (!is.null(gp$Estimator) && "Chao.Bunge" %in% gp$Estimator$Estimator) {
-        out$S_chiu_gp <- as.numeric(gp$Estimator$`Estimate`[gp$Estimator$Estimator == "Chao.Bunge"])
+    if (!inherits(gp, "try-error") && is.list(gp) && !is.null(gp$Species_table)) {
+      tbl <- gp$Species_table
+      rn <- rownames(tbl)
+      grab <- function(name) {
+        if (name %in% rn) as.numeric(tbl[name, "Estimate"]) else NA_real_
       }
-      if (!is.null(gp$info) && "GPMLE" %in% names(gp$info)) {
-        out$S_gp_mle <- as.numeric(gp$info[["GPMLE"]])
+      out$S_chao1_bc <- ifelse(is.na(out$S_chao1_bc), grab("Chao1-bc"), out$S_chao1_bc)
+      out$S_ace      <- ifelse(is.na(out$S_ace),      grab("ACE (Chao & Lee, 1992)"), out$S_ace)
+      out$S_chiu_gp  <- grab("iChao1 (Chiu et al. 2014)")
+      out$S_gp_mle   <- grab("Homogeneous (MLE)")
+    }
+  } else if (requireNamespace("SPECIES", quietly = TRUE)) {
+    gp <- try(SPECIES::ChaoSpecies(counts, datatype = "abundance"), silent = TRUE)
+    if (!inherits(gp, "try-error") && is.list(gp) && !is.null(gp$Species_table)) {
+      tbl <- gp$Species_table
+      rn <- rownames(tbl)
+      grab <- function(name) {
+        if (name %in% rn) as.numeric(tbl[name, "Estimate"]) else NA_real_
       }
+      out$S_chiu_gp <- grab("iChao1 (Chiu et al. 2014)")
+      out$S_gp_mle  <- grab("Homogeneous (MLE)")
     }
   }
 
@@ -128,13 +137,15 @@ estimate_richness_all <- function(counts) {
   # preseqR discovery extrapolation to 2x and 5x sampling effort
   if (requireNamespace("preseqR", quietly = TRUE)) {
     fvec <- tabulate(counts)
-    fvec <- fvec[fvec > 0]
-    # preseqR expects a vector of frequency-of-frequency counts (f1, f2, ...)
-    pr <- try(preseqR::ds.rSAC(f = fvec, t = c(n * 2, n * 5)), silent = TRUE)
-    if (!inherits(pr, "try-error") && is.matrix(pr)) {
-      # ds.rSAC returns a matrix with rows = t, cols = estimates
-      out$S2x_preseq <- as.numeric(pr[1, 2])
-      if (nrow(pr) >= 2) out$S5x_preseq <- as.numeric(pr[2, 2])
+    idx <- which(fvec > 0)
+    mat <- cbind(idx, fvec[idx])
+    sac_fun <- try(preseqR::ds.rSAC(mat), silent = TRUE)
+    if (!inherits(sac_fun, "try-error") && is.function(sac_fun)) {
+      preds <- try(as.numeric(sac_fun(c(n * 2, n * 5))), silent = TRUE)
+      if (!inherits(preds, "try-error") && length(preds) >= 2) {
+        out$S2x_preseq <- preds[[1]]
+        out$S5x_preseq <- preds[[2]]
+      }
     }
   }
 
