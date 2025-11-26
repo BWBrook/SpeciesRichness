@@ -3,6 +3,7 @@
 export(build_co_sample_flat)
 export(cegs_ld)
 export(cegs_ml)
+export(estimate_richness_all)
 export(fetch_ecoregister_zip)
 export(read_ecoregister_counts)
 export(summarise_per_inventory)
