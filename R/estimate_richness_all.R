@@ -52,8 +52,14 @@ estimate_richness_all <- function(counts) {
   if (requireNamespace("vegan", quietly = TRUE)) {
     est <- try(vegan::estimateR(counts), silent = TRUE)
     if (!inherits(est, "try-error")) {
-      if ("S.chao1" %in% rownames(est)) out$S_chao1_bc <- as.numeric(est["S.chao1", 1])
-      if ("S.ACE"   %in% rownames(est)) out$S_ace       <- as.numeric(est["S.ACE", 1])
+      if (is.null(dim(est))) {
+        # named vector
+        if ("S.chao1" %in% names(est)) out$S_chao1_bc <- as.numeric(est[["S.chao1"]])
+        if ("S.ACE"   %in% names(est)) out$S_ace       <- as.numeric(est[["S.ACE"]])
+      } else {
+        if ("S.chao1" %in% rownames(est)) out$S_chao1_bc <- as.numeric(est["S.chao1", 1])
+        if ("S.ACE"   %in% rownames(est)) out$S_ace       <- as.numeric(est["S.ACE", 1])
+      }
     }
   }
 
@@ -69,17 +75,20 @@ estimate_richness_all <- function(counts) {
   if (requireNamespace("sads", quietly = TRUE)) {
     fit_ls <- try(sads::fitsad(counts, "ls"), silent = TRUE)
     if (!inherits(fit_ls, "try-error")) {
-      alpha <- try(as.numeric(coef(fit_ls)[["alpha"]]), silent = TRUE)
+      pars <- try(bbmle::coef(fit_ls), silent = TRUE)
+      alpha <- try(as.numeric(pars[["alpha"]]), silent = TRUE)
       if (!inherits(alpha, "try-error") && is.finite(alpha)) {
         out$S_logseries <- alpha * log(1 + n / alpha)
       }
     }
     fit_pl <- try(sads::fitsad(counts, "poilog"), silent = TRUE)
     if (!inherits(fit_pl, "try-error")) {
-      pars <- try(coef(fit_pl), silent = TRUE)
+      pars <- try(bbmle::coef(fit_pl), silent = TRUE)
       if (!inherits(pars, "try-error") && all(c("mu","sig") %in% names(pars))) {
         mu <- pars[["mu"]]; sig <- pars[["sig"]]
-        p0 <- try(poilog::ppoilog(0, mu = mu, sig = sig, lower.tail = TRUE), silent = TRUE)
+        p0 <- try(stats::integrate(function(l) stats::dlnorm(l, meanlog = mu, sdlog = sig) * exp(-l),
+                                   lower = 0, upper = Inf)$value,
+                  silent = TRUE)
         if (!inherits(p0, "try-error") && is.finite(p0) && p0 < 1) {
           out$S_poilog <- S_obs / (1 - p0)
         }
@@ -102,9 +111,11 @@ estimate_richness_all <- function(counts) {
     gp <- try(SpadeR::ChaoSpecies(counts, datatype = "abundance"), silent = TRUE)
     if (!inherits(gp, "try-error") && is.list(gp) && !is.null(gp$Species_table)) {
       tbl <- gp$Species_table
-      rn <- rownames(tbl)
+      rn <- trimws(rownames(tbl))
       grab <- function(name) {
-        if (name %in% rn) as.numeric(tbl[name, "Estimate"]) else NA_real_
+        if (name %in% rn) {
+          as.numeric(tbl[match(name, rn), "Estimate"])
+        } else NA_real_
       }
       out$S_chao1_bc <- ifelse(is.na(out$S_chao1_bc), grab("Chao1-bc"), out$S_chao1_bc)
       out$S_ace      <- ifelse(is.na(out$S_ace),      grab("ACE (Chao & Lee, 1992)"), out$S_ace)
@@ -115,9 +126,9 @@ estimate_richness_all <- function(counts) {
     gp <- try(SPECIES::ChaoSpecies(counts, datatype = "abundance"), silent = TRUE)
     if (!inherits(gp, "try-error") && is.list(gp) && !is.null(gp$Species_table)) {
       tbl <- gp$Species_table
-      rn <- rownames(tbl)
+      rn <- trimws(rownames(tbl))
       grab <- function(name) {
-        if (name %in% rn) as.numeric(tbl[name, "Estimate"]) else NA_real_
+        if (name %in% rn) as.numeric(tbl[match(name, rn), "Estimate"]) else NA_real_
       }
       out$S_chiu_gp <- grab("iChao1 (Chiu et al. 2014)")
       out$S_gp_mle  <- grab("Homogeneous (MLE)")
