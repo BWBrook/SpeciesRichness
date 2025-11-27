@@ -19,7 +19,10 @@ pkgs <- c(
   "targets", "tarchetypes",
   "testthat", "devtools", "usethis",
   "readr", "data.table", "jsonlite", "httr", "curl",
-  "here", "cli", "glue"
+  "here", "cli", "glue",
+  # rich estimator suite (Suggests)
+  "vegan", "iNEXT", "SpadeR", "SPECIES", "preseqR", "breakaway",
+  "sads", "poilog"
 )
 renv::install(pkgs)
 

@@ -104,3 +104,20 @@ Date: 2025-08-24
 ### Fixed
 - Improved pipeline portability by avoiding implicit package attachment and by using explicit imports.
 - 
+
+## Module 3 · Full estimator panel & CEGS priors
+Date: 2025-11-27
+
+Summary
+- Added unified richness wrapper `estimate_richness_all()` covering Chao1/ACE/iChao1, Chao–Bunge, logseries, poilog, iNEXT coverage, preseqR extrapolations, and CEGS ML/LD (NA-on-failure semantics).
+- Added CEGS parameter wrapper `fit_cegs_params()` to expose scale/shape/AICc for prior construction.
+- Switched Dryad fetch to v2 API download endpoint to avoid 403s; cached gz stays under `data-raw/cache/`.
+- Built real-data panels from the Ecological Register (≈180–200 inventories) for richness estimators and CEGS parameters under `data/processed/`.
+
+Highlights
+- Panel: `data/processed/ecoregister_richness_panel_full.csv` (most estimators populated; Chao–Bunge returns NA where breakaway fails).
+- CEGS params: `data/processed/ecoregister_cegs_params.csv` plus summary/correlation tables for priors.
+- Ingest fix for non-attached data.table usage; parallel panel builders for faster real-data runs.
+
+Next
+- Expand panel size; tune breakaway cutoff handling; add biome/region metadata when available.

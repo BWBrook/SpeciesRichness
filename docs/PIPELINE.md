@@ -18,6 +18,14 @@ Overview of the `{targets}` pipeline and how to work with it.
 - `cegs_scores`: neighbour tail log-likelihoods for CEGS-ML/LD.
 - `cegs_summary`: basic vs 10x-margin win rates (LD vs ML).
 
+### Richness + CEGS parameter panels (deterministic subset, first 180 inventories)
+- `panel_ids`: first 180 `sample_id`s (sorted) from `counts_dt`.
+- `split_counts`: list of integer abundance vectors by `sample_id`.
+- `richness_panel`: `estimate_richness_all()` applied to `panel_ids` (one row per inventory).
+- `richness_panel_csv`: written to `data/processed/ecoregister_richness_panel_full.csv`.
+- `cegs_params_panel`: `fit_cegs_params()` applied to `panel_ids`.
+- `cegs_params_csv`: written to `data/processed/ecoregister_cegs_params.csv`.
+
 ## Options
 
 - Seed: `tar_option_set(seed = 1L)` for deterministic behavior.

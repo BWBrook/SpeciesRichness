@@ -7,6 +7,7 @@ import::here(read_ecoregister_counts, summarise_per_inventory, build_co_sample_f
 import::here(fetch_ecoregister_zip, .from = "R/fetch_ecoregister.R")
 import::here(topk_fingerprint, nearest_neighbour, tail_histogram, tail_nll, .from = "R/benchmark_cegs.R")
 import::here(cegs_ml, cegs_ld, .from = "R/cegs.R")
+import::here(estimate_richness_all, fit_cegs_params, .from = "R/estimate_richness_all.R")
 
 # Global options for targets
 tar_option_set(seed = 1L)
@@ -71,5 +72,45 @@ list(
     basic <- dec(x$ll_cegs_ld, x$ll_cegs_ml)
     margin <- dec(x$ll_cegs_ld, x$ll_cegs_ml - log(10))
     list(basic = basic, margin10 = margin)
-  })
+  }),
+
+  # --- Richness / CEGS panels (deterministic subset of inventories) ---
+  tar_target(panel_ids, {
+    ids <- sort(unique(counts_dt$sample_id))
+    head(ids, 180L)
+  }),
+  tar_target(split_counts, split(counts_dt$count, counts_dt$sample_id)),
+  tar_target(richness_panel, {
+    res <- lapply(panel_ids, function(sid) {
+      counts <- as.integer(split_counts[[sid]])
+      out <- try(estimate_richness_all(counts), silent = TRUE)
+      if (inherits(out, "try-error")) return(NULL)
+      out$sample_id <- sid
+      out
+    })
+    data.table::rbindlist(res, fill = TRUE)
+  }),
+  tar_target(richness_panel_csv, {
+    dir.create("data/processed", recursive = TRUE, showWarnings = FALSE)
+    p <- file.path("data/processed", "ecoregister_richness_panel_full.csv")
+    data.table::fwrite(richness_panel, p)
+    p
+  }, format = "file"),
+
+  tar_target(cegs_params_panel, {
+    res <- lapply(panel_ids, function(sid) {
+      counts <- as.integer(split_counts[[sid]])
+      out <- try(fit_cegs_params(counts), silent = TRUE)
+      if (inherits(out, "try-error")) return(NULL)
+      out$sample_id <- sid
+      out
+    })
+    data.table::rbindlist(res, fill = TRUE)
+  }),
+  tar_target(cegs_params_csv, {
+    dir.create("data/processed", recursive = TRUE, showWarnings = FALSE)
+    p <- file.path("data/processed", "ecoregister_cegs_params.csv")
+    data.table::fwrite(cegs_params_panel, p)
+    p
+  }, format = "file")
 )
